@@ -1,38 +1,20 @@
-# IDV Analytics Dashboard
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-An identity-verification (IDV) analytics dashboard: KPI summary cards, verification
-volume over time, outcome/document/region breakdowns, and a filterable recent-sessions
-table with detail drawer.
+# Run and deploy your AI Studio app
 
-**Live demo:** https://ashwarya1kgit.github.io/IDV-DASHBOARD/
+This contains everything you need to run your app locally.
 
-> Runs on deterministic **mock data** today. The data layer (`lib/data/idvService.ts`)
-> is a typed interface designed so a real-time MongoDB-backed provider can replace the
-> mock provider later with a localized change.
+View your app in AI Studio: https://ai.studio/apps/a438a7d3-99ec-4f3b-baa5-11436307410c
 
-## Tech Stack
+## Run Locally
 
-- Next.js 15 (App Router) + TypeScript, static export (`output: 'export'`)
-- Tailwind CSS · Recharts · lucide-react
-- Vitest + Testing Library
-- Auto-deployed to GitHub Pages via GitHub Actions on push to `main`
+**Prerequisites:**  Node.js
 
-## Local Development
 
-```bash
-npm install
-npm run dev        # http://localhost:3000
-npm test           # run the test suite
-npm run build      # static export to ./out
-```
-
-## Project Structure
-
-- `app/page.tsx` — dashboard shell; owns date-range/filter state, fetches via the service
-- `components/` — presentational widgets (KPI cards, charts, table)
-- `lib/data/` — domain types, deterministic mock provider, and the service interface
-
-## Documentation
-
-- Design spec: `docs/superpowers/specs/2026-06-24-idv-analytics-dashboard-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-06-24-idv-analytics-dashboard.md`
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`

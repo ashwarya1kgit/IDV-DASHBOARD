@@ -1,0 +1,6 @@
+{
+  "name": "IDV Client Success Dashboard",
+  "description": "Dynamic customer success monitoring and real-time alerting dashboard for 20 identity verification clients.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
