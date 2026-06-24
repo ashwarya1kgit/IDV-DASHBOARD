@@ -22,7 +22,9 @@ export interface VerificationLog {
   timestamp: string; // ISO string
   userId: string;
   idType: 'Passport' | 'Drivers_License' | 'National_ID' | 'Biometric';
-  status: string;
+  // DESIGN_SPEC.md §5 documents SUCCESS | FAILED | NOT_PERFORMED | ABANDONED.
+  // RETRIED is retained because the spec's retryRate metric depends on it.
+  status: 'SUCCESS' | 'FAILED' | 'NOT_PERFORMED' | 'ABANDONED' | 'RETRIED';
   failureReason?: string;
   responseTimeMs: number;
   sessionId?: string;

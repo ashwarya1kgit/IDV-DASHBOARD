@@ -50,6 +50,10 @@ let mongoClient: MongoClient | null = null;
 let mongoConnected = false;
 let activeMongoUri = process.env.MONGODB_URI || "";
 
+// Explicitly tracked active data source (per DESIGN_SPEC.md §5 SystemStats.dataSource).
+// Starts on the in-memory synthetic store; updated by uploads and Mongo (dis)connects.
+let currentDataSource: 'Local DB' | 'MongoDB Cloud' | 'Uploaded Raw File' = 'Local DB';
+
 // Initialize MongoDB Connection if URI exists
 async function connectToMongo(uri: string): Promise<boolean> {
   if (!uri) return false;
@@ -330,7 +334,7 @@ app.get("/api/summary-stats", (req, res) => {
     averageRetryRate,
     activeAlertCount: activeAlerts,
     mongoConnected,
-    dataSource: mongoConnected ? 'MongoDB Cloud' : (logs.length > 2000 ? 'Uploaded Raw File' : 'Local DB'),
+    dataSource: mongoConnected ? 'MongoDB Cloud' : currentDataSource,
     clientsCount: clients.length,
     activeClientsCount: clients.filter(c => c.status === 'active').length,
     startDate,
@@ -592,6 +596,7 @@ app.post("/api/mongodb/connect", async (req, res) => {
       console.warn("Could not query or seed MongoDB database, keeping existing data. Error:", dbErr);
     }
 
+    currentDataSource = 'MongoDB Cloud';
     res.json({ success: true, message: "Connected to MongoDB successfully and loaded records." });
   } else {
     res.status(500).json({ error: "Failed to connect to MongoDB with the provided URI." });
@@ -608,6 +613,7 @@ app.post("/api/mongodb/disconnect", async (req, res) => {
   // Reset back to normal synthetic logs
   logs = generateSyntheticLogs(clients, 30);
   alerts = generateAlertsFromLogs(logs, clients);
+  currentDataSource = 'Local DB';
   res.json({ success: true, message: "Disconnected from MongoDB. Reverted dashboard to local data store." });
 });
 
@@ -814,6 +820,19 @@ app.post("/api/upload-raw", (req, res) => {
     return res.status(400).json({ error: "Invalid data format. Expected array of verification logs." });
   }
 
+  // Normalize an incoming status to the canonical uppercase union used across the
+  // metrics engine (DESIGN_SPEC.md §5). Accepts the documented values case-insensitively,
+  // plus a few common synonyms, and falls back to SUCCESS for unrecognized input.
+  const normalizeUploadStatus = (raw: unknown): VerificationLog["status"] => {
+    const s = String(raw ?? "").trim().toUpperCase();
+    if (s === "SUCCESS" || s === "PASSED" || s === "PASS") return "SUCCESS";
+    if (s === "FAILED" || s === "FAILURE" || s === "FAIL") return "FAILED";
+    if (s === "ABANDONED" || s === "ABANDON") return "ABANDONED";
+    if (s === "NOT_PERFORMED" || s === "NOT PERFORMED") return "NOT_PERFORMED";
+    if (s === "RETRIED" || s === "RETRY") return "RETRIED";
+    return "SUCCESS";
+  };
+
   try {
     const parsedLogs: VerificationLog[] = data.map((item: any, idx: number) => {
       // Clean and default raw input lines
@@ -824,7 +843,7 @@ app.post("/api/upload-raw", (req, res) => {
         timestamp: item.timestamp || new Date().toISOString(),
         userId: item.userId || `user_uploaded_${Math.floor(Math.random() * 100000)}`,
         idType: item.idType || "Passport",
-        status: (item.status === 'success' || item.status === 'failed' || item.status === 'abandoned' || item.status === 'retried') ? item.status : 'success',
+        status: normalizeUploadStatus(item.status),
         failureReason: item.failureReason || undefined,
         responseTimeMs: parseInt(item.responseTimeMs) || 1200
       };
@@ -838,7 +857,8 @@ app.post("/api/upload-raw", (req, res) => {
 
     // Re-evaluate alerts
     alerts = generateAlertsFromLogs(logs, clients);
-    
+    currentDataSource = 'Uploaded Raw File';
+
     res.json({
       success: true,
       message: `Successfully processed and ${mode === "replace" ? "replaced" : "imported"} ${parsedLogs.length} logs from raw file.`,
